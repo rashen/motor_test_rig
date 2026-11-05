@@ -1,0 +1,45 @@
+[package]
+name = "motor_test_rig"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.94"
+
+[[bin]]
+name = "motor_test_rig"
+harness = false
+
+[dependencies]
+embassy-executor = { version = "0.10.0" }
+embassy-time = { version = "0.5.0", features = ["generic-queue-64"] }
+embedded-can = "0.4.1"
+esp-backtrace = { git = "https://github.com/rashen/esp-hal", rev = "687e12cbc8961f174b7ccfc890ef5fde81a08ff0", features = [
+    "esp32c5",
+    "panic-handler",
+    "println",
+] }
+esp-bootloader-esp-idf = { git = "https://github.com/rashen/esp-hal", rev = "687e12cbc8961f174b7ccfc890ef5fde81a08ff0", features = [
+    "esp32c5",
+] }
+esp-hal = { git = "https://github.com/rashen/esp-hal", rev = "687e12cbc8961f174b7ccfc890ef5fde81a08ff0", features = [
+    "esp32c5",
+    "unstable",
+] }
+esp-println = { git = "https://github.com/rashen/esp-hal", rev = "687e12cbc8961f174b7ccfc890ef5fde81a08ff0", features = [
+    "esp32c5",
+    "jtag-serial",
+    "critical-section",
+], default-features = false }
+esp-rtos = { git = "https://github.com/rashen/esp-hal", rev = "687e12cbc8961f174b7ccfc890ef5fde81a08ff0", features = [
+    "esp32c5",
+    "embassy",
+] }
+
+[profile.dev]
+opt-level = 's'
+debug = 2
+
+[profile.release]
+codegen-units = 1
+debug = 2
+lto = 'fat'
+opt-level = 's'
