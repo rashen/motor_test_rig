@@ -23,8 +23,9 @@ bit 1 (ack).
 ## Prerequisites
 
 * Install [Rust](https://rust-lang.org/tools/install/)
-  * (Windows only) You may need to install MSVC using the Visual Studio installer: https://rust-lang.github.io/rustup/installation/windows-msvc.html
-* Install [espflash](https://github.com/esp-rs/espflash/releases/tag/v4.7.0)
+  * (Windows only) You may need to install MSVC using the Visual Studio installer: [Instructions](https://rust-lang.github.io/rustup/installation/windows-msvc.html)
+  * Add riscv toolchain: `rustup target add riscv32imac-unknown-none-elf`
+* Install espflash: `cargo install espflash --locked`
 * (Windows only) Install [CP210x Universal Windows Driver](https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers?tab=downloads)
 
 ## Usage
