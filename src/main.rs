@@ -279,13 +279,14 @@ async fn main(spawner: Spawner) {
             esp_println::println!("Button {}", if pressed { "pressed" } else { "released" });
             button_was_pressed = pressed;
         }
-        let limit_switch = LIMIT_SWITCH.try_take().unwrap_or(false);
-        if limit_switch != limit_switch_was_pressed {
-            esp_println::println!(
-                "Limit switch {}",
-                if pressed { "pressed" } else { "released" }
-            );
-            limit_switch_was_pressed = limit_switch;
+        if let Some(limit_switch) = LIMIT_SWITCH.try_take() {
+            if limit_switch != limit_switch_was_pressed {
+                esp_println::println!(
+                    "Limit switch {}",
+                    if pressed { "pressed" } else { "released" }
+                );
+                limit_switch_was_pressed = limit_switch;
+            }
         }
 
         if !lift_config_sent {
