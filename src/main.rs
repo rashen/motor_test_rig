@@ -3,6 +3,7 @@
 #![no_main]
 
 use embassy_executor::Spawner;
+use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_time::{Duration, Instant, Timer};
 use embedded_can::{Frame, Id, StandardId};
 use esp_backtrace as _;
@@ -72,6 +73,30 @@ const LIFT_RUN_SPEED: i32 = 1000;
 const LOOP_TIME: Duration = Duration::from_millis(20);
 const RX_LOG_INTERVAL_MS: u64 = 500;
 
+static LIMIT_SWITCH: embassy_sync::signal::Signal<CriticalSectionRawMutex, bool> =
+    embassy_sync::signal::Signal::<CriticalSectionRawMutex, bool>::new();
+
+#[modular_bitfield::bitfield(bytes = 2)]
+#[derive(Clone)]
+pub struct MotorStatus {
+    pub fail: bool,
+    pub communication: bool,
+    pub current: bool,
+    pub voltage: bool,
+    pub temperature: bool,
+    pub torque_limit: bool,
+    pub locked_shaft: bool,
+    pub regulator: bool,
+    pub moving: bool,
+    pub reverse: bool,
+    pub target: bool,
+    pub reserved: bool,
+    pub input_a: bool,
+    pub input_b: bool,
+    pub user1: bool,
+    pub user2: bool,
+}
+
 fn std_frame(id: u32, data: &[u8; 8]) -> EspTwaiFrame {
     let id = Id::Standard(StandardId::new(id as u16).expect("invalid CAN id"));
     EspTwaiFrame::new(id, data).expect("invalid CAN frame")
@@ -104,6 +129,12 @@ async fn can_receiver(mut rx: TwaiRx<'static, esp_hal::Async>) -> ! {
                     continue;
                 };
                 let id = id.as_raw() as u32;
+
+                if id == can_ids::LIFT_MOTOR_STATUS {
+                    let status = MotorStatus::from_bytes(frame.data()[0..2].try_into().unwrap());
+                    LIMIT_SWITCH.signal(status.input_a() || status.input_b());
+                }
+
                 let slot = match id {
                     can_ids::LEFT_MOTOR_STATE
                     | can_ids::LEFT_MOTOR_STATE_2
@@ -238,21 +269,38 @@ async fn main(spawner: Spawner) {
     let lift_stop = lift_input_frame(LIFT_MODE_STOP, LIFT_RAMP_SPEED, 0);
     let lift_run = lift_input_frame(LIFT_MODE_RUN, LIFT_RAMP_SPEED, LIFT_RUN_SPEED);
 
-    let mut was_pressed = false;
+    let mut button_was_pressed = false;
+    let mut limit_switch_was_pressed = false;
     let mut lift_config_sent = false;
     loop {
         let buttons = read_buttons(&mut i2c).await;
         let pressed = (buttons >> ACK_BUTTON_BIT) & 1 == 1;
-        if pressed != was_pressed {
+        if pressed != button_was_pressed {
             esp_println::println!("Button {}", if pressed { "pressed" } else { "released" });
-            was_pressed = pressed;
+            button_was_pressed = pressed;
+        }
+        let limit_switch = LIMIT_SWITCH.try_take().unwrap_or(false);
+        if limit_switch != limit_switch_was_pressed {
+            esp_println::println!(
+                "Limit switch {}",
+                if pressed { "pressed" } else { "released" }
+            );
+            limit_switch_was_pressed = limit_switch;
         }
 
         if !lift_config_sent {
             send(&mut tx, &lift_config_frame(LIFT_TORQUE)).await;
             lift_config_sent = true;
         }
-        send(&mut tx, if pressed { &lift_run } else { &lift_stop }).await;
+        send(
+            &mut tx,
+            if pressed && !limit_switch {
+                &lift_run
+            } else {
+                &lift_stop
+            },
+        )
+        .await;
 
         if pressed {
             send(&mut tx, &run_mode).await;

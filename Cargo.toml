@@ -9,7 +9,9 @@ name = "motor_test_rig"
 harness = false
 
 [dependencies]
+modular-bitfield = "0.13.1"
 embassy-executor = { version = "0.10.0" }
+embassy-sync = "0.7.2"
 embassy-time = { version = "0.5.0", features = ["generic-queue-64"] }
 embedded-can = "0.4.1"
 esp-backtrace = { git = "https://github.com/rashen/esp-hal", rev = "687e12cbc8961f174b7ccfc890ef5fde81a08ff0", features = [
