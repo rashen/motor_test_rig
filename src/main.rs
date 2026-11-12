@@ -270,7 +270,7 @@ async fn main(spawner: Spawner) {
     let lift_run = lift_input_frame(LIFT_MODE_RUN, LIFT_RAMP_SPEED, LIFT_RUN_SPEED);
 
     let mut button_was_pressed = false;
-    let mut limit_switch_was_pressed = false;
+    let mut limit_switch_pressed = false;
     let mut lift_config_sent = false;
     loop {
         let buttons = read_buttons(&mut i2c).await;
@@ -280,12 +280,12 @@ async fn main(spawner: Spawner) {
             button_was_pressed = pressed;
         }
         if let Some(limit_switch) = LIMIT_SWITCH.try_take() {
-            if limit_switch != limit_switch_was_pressed {
+            if limit_switch != limit_switch_pressed {
                 esp_println::println!(
                     "Limit switch {}",
                     if pressed { "pressed" } else { "released" }
                 );
-                limit_switch_was_pressed = limit_switch;
+                limit_switch_pressed = limit_switch;
             }
         }
 
@@ -295,7 +295,7 @@ async fn main(spawner: Spawner) {
         }
         send(
             &mut tx,
-            if pressed && !limit_switch {
+            if pressed && !limit_switch_pressed {
                 &lift_run
             } else {
                 &lift_stop
